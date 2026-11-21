@@ -235,20 +235,14 @@ namespace PurrFanity
 
         private static bool Keeps(MaskStyle style, char character, bool first, bool last)
         {
-            switch (style)
+            return style switch
             {
                 // Vowels and anything standing in for a letter go, separators like s.h.i.t stay
-                case MaskStyle.Vowels:
-                    return char.IsLetter(character)
-                        ? "aeiou".IndexOf(TextNormalizer.Fold(character)) < 0
-                        : !char.IsDigit(character) && !TextNormalizer.IsLeetSymbol(character);
-                case MaskStyle.KeepFirst:
-                    return first;
-                case MaskStyle.KeepEnds:
-                    return first || last;
-                default:
-                    return false;
-            }
+                MaskStyle.Vowels => (bool)(char.IsLetter(character) ? "aeiou".IndexOf(TextNormalizer.Fold(character)) < 0 : !char.IsDigit(character) && !TextNormalizer.IsLeetSymbol(character)),
+                MaskStyle.KeepFirst => first,
+                MaskStyle.KeepEnds => first || last,
+                _ => false,
+            };
         }
 
         private static bool IsEmpty(string[] pool)
