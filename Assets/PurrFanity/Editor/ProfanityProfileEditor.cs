@@ -19,6 +19,12 @@ namespace PurrFanity.Editor
 
             _testText = EditorGUILayout.TextField("Text", _testText);
 
+            if (!profile.enabled)
+            {
+                EditorGUILayout.HelpBox("Turned off, text passes through unchanged.", MessageType.None);
+                return;
+            }
+
             var result = profile.filter.Check(_testText);
 
             if (result.blocked)

@@ -31,6 +31,9 @@ namespace PurrFanity
         private const string AllowFile = "allow";
         private const string CommonFile = "common";
 
+        [Tooltip("Off lets all text through unchanged, for things like a streamer mode toggle.")]
+        [SerializeField] private bool _enabled = true;
+
         [Tooltip("Built-in languages to load, like en. Anyone is welcome to contribute more word lists!")]
         [SerializeField] private string[] _languages = { "en" };
 
@@ -42,7 +45,13 @@ namespace PurrFanity
 
         [Tooltip("Categories with their own action, like blocking slurs.")]
         [SerializeField] private CategoryAction[] _categoryActions = Array.Empty<CategoryAction>();
+
+        [Tooltip("How masked words look: ****, f*ck, f***, f**k or @#$%.")]
+        [SerializeField] private MaskStyle _maskStyle = MaskStyle.All;
         [SerializeField] private char _maskCharacter = '*';
+
+        [Tooltip("The characters the Symbols style cycles through.")]
+        [SerializeField] private string _maskSymbols = ProfanityFilterSettings.defaultMaskSymbols;
 
         [Tooltip("The words Replace Silly picks from.")]
         [SerializeField] private string[] _sillyWords = (string[])ProfanityFilterSettings.defaultSillyWords.Clone();
@@ -88,6 +97,41 @@ namespace PurrFanity
             set
             {
                 _action = value;
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// Off lets all text through unchanged. Cheap to flip, nothing gets rebuilt.
+        /// </summary>
+        public bool enabled
+        {
+            get => _enabled;
+            set
+            {
+                _enabled = value;
+
+                if (_filter != null)
+                    _filter.settings.enabled = value;
+            }
+        }
+
+        public MaskStyle maskStyle
+        {
+            get => _maskStyle;
+            set
+            {
+                _maskStyle = value;
+                Invalidate();
+            }
+        }
+
+        public string maskSymbols
+        {
+            get => _maskSymbols;
+            set
+            {
+                _maskSymbols = value;
                 Invalidate();
             }
         }
@@ -226,7 +270,10 @@ namespace PurrFanity
             var settings = new ProfanityFilterSettings
             {
                 action = _action,
+                enabled = _enabled,
                 maskCharacter = _maskCharacter,
+                maskStyle = _maskStyle,
+                maskSymbols = string.IsNullOrEmpty(_maskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _maskSymbols,
                 detectEvasion = _detectEvasion,
                 sillyWords = _sillyWords
             };

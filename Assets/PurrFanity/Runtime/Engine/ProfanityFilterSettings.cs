@@ -16,8 +16,18 @@ namespace PurrFanity
         /// </summary>
         public ProfanityAction action { get; set; } = ProfanityAction.Mask;
 
+        /// <summary>
+        /// Off lets all text through unchanged, for things like a streamer mode toggle.
+        /// </summary>
+        public bool enabled { get; set; } = true;
         public char maskCharacter { get; set; } = '*';
+        public MaskStyle maskStyle { get; set; } = MaskStyle.All;
 
+        /// <summary>
+        /// The characters Symbols mask style cycles through.
+        /// </summary>
+        public string maskSymbols { get; set; } = defaultMaskSymbols;
+        public const string defaultMaskSymbols = "@#$%&!";
         public string[] sillyWords { get; set; } = defaultSillyWords;
 
         /// <summary>

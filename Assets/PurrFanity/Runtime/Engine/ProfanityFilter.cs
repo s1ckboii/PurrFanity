@@ -58,7 +58,7 @@ namespace PurrFanity
 
         public bool Contains(string text)
         {
-            if (string.IsNullOrEmpty(text))
+            if (!_settings.enabled || string.IsNullOrEmpty(text))
                 return false;
 
             var scratch = _scratch ??= new Scratch();
@@ -84,7 +84,7 @@ namespace PurrFanity
         /// </summary>
         public ProfanityResult Check(string text, ProfanityAction? forcedAction)
         {
-            if (string.IsNullOrEmpty(text))
+            if (!_settings.enabled || string.IsNullOrEmpty(text))
                 return ProfanityResult.Clean(text);
 
             var scratch = _scratch ??= new Scratch();
@@ -139,13 +139,7 @@ namespace PurrFanity
 
             if (IsEmpty(pool))
             {
-                // Keep a phrase's spaces
-                for (var i = 0; i < match.length; i++)
-                {
-                    var character = text[match.index + i];
-                    builder.Append(char.IsWhiteSpace(character) ? character : _settings.maskCharacter);
-                }
-
+                AppendMask(builder, text, match, _settings.maskStyle);
                 return;
             }
 
@@ -194,6 +188,67 @@ namespace PurrFanity
             }
             else
                 builder.Append(replacement);
+        }
+
+        // Keeps a phrase's spaces whatever the style
+        private void AppendMask(StringBuilder builder, string text, ProfanityMatch match, MaskStyle style)
+        {
+            int start = builder.Length;
+            int firstLetter = -1;
+            int lastLetter = -1;
+
+            for (var i = 0; i < match.length; i++)
+            {
+                if (!char.IsLetterOrDigit(text[match.index + i]))
+                    continue;
+
+                if (firstLetter < 0)
+                    firstLetter = i;
+
+                lastLetter = i;
+            }
+
+            var symbols = string.IsNullOrEmpty(_settings.maskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _settings.maskSymbols;
+            int masked = 0;
+
+            for (var i = 0; i < match.length; i++)
+            {
+                var character = text[match.index + i];
+
+                if (char.IsWhiteSpace(character) || Keeps(style, character, i == firstLetter, i == lastLetter))
+                {
+                    builder.Append(character);
+                    continue;
+                }
+
+                builder.Append(style == MaskStyle.Symbols ? symbols[(match.index + masked) % symbols.Length] : _settings.maskCharacter);
+                masked++;
+            }
+
+            if (masked > 0 || style == MaskStyle.All)
+                return;
+
+            // Nothing got hidden (fvck has no vowels, a two letter word in KeepEnds), try the next stricter style
+            builder.Length = start;
+            AppendMask(builder, text, match, style == MaskStyle.Vowels ? MaskStyle.KeepEnds : style == MaskStyle.KeepEnds ? MaskStyle.KeepFirst : MaskStyle.All);
+        }
+
+        private static bool Keeps(MaskStyle style, char character, bool first, bool last)
+        {
+            switch (style)
+            {
+                // Vowels and anything standing in for a letter go, separators like s.h.i.t stay
+                case MaskStyle.Vowels:
+                    return char.IsLetter(character)
+                        ? "aeiou".IndexOf(TextNormalizer.Fold(character)) < 0
+                        : !char.IsDigit(character) && !TextNormalizer.IsLeetSymbol(character);
+                case MaskStyle.KeepFirst:
+                    return first;
+                case MaskStyle.KeepEnds:
+                    return first || last;
+                default:
+                    return false;
+            }
         }
 
         private static bool IsEmpty(string[] pool)
@@ -255,13 +310,15 @@ namespace PurrFanity
                     }
                 }
 
-                // Split in two by a space: fu ck
-                if (evasion && MatchPair(text, scratch, index, hasAllowedPhrases))
+                // Split up by spaces: fu ck, f u ck, f uck
+                int pieces = evasion ? MatchPieces(text, scratch, index, hasAllowedPhrases) : 0;
+
+                if (pieces > 0)
                 {
                     if (firstOnly)
                         return;
 
-                    index += 2;
+                    index += pieces;
                     continue;
                 }
 
@@ -467,44 +524,89 @@ namespace PurrFanity
             return 0;
         }
 
-        // Two standalone words read as one, only when neither is a word on its own or a common one
-        private bool MatchPair(string text, Scratch scratch, int first, bool hasAllowedPhrases)
+        // Longest number of words read as one
+        private const int MaxPieces = 4;
+
+        // Standalone words read as one word, longest first. Returns how many were used, 0 when none.
+        private int MatchPieces(string text, Scratch scratch, int first, bool hasAllowedPhrases)
+        {
+            if (!_dictionary.hasCommon)
+                return 0;
+
+            var tokens = scratch.tokens;
+
+            for (var count = MaxPieces; count >= 2; count--)
+            {
+                if (!CanJoin(text, scratch, first, count, hasAllowedPhrases))
+                    continue;
+
+                scratch.glyphCount = 0;
+
+                for (var piece = first; piece < first + count; piece++)
+                    AddGlyphs(text, tokens[piece].coreStart, tokens[piece].coreEnd, scratch);
+
+                var entry = Match(scratch, true);
+
+                if (entry == null || !PiecesAreFragments(text, scratch, first, count))
+                    continue;
+
+                int start = tokens[first].coreStart;
+                scratch.matches.Add(new ProfanityMatch(start, tokens[first + count - 1].coreEnd - start, entry));
+                return count;
+            }
+
+            return 0;
+        }
+
+        // Pieces need to stand alone, and more than two need a short one among them (f u ck),
+        // so three real words never join
+        private bool CanJoin(string text, Scratch scratch, int first, int count, bool hasAllowedPhrases)
         {
             var tokens = scratch.tokens;
-            int second = first + 1;
+            int end = first + count;
 
-            if (!_dictionary.hasCommon || second >= tokens.Count)
+            if (end > tokens.Count || tokens[first].glued || (end < tokens.Count && tokens[end].glued))
                 return false;
 
-            // Both need to stand alone, not be part of s.h.i.t or 5_/TuP1___D
-            if (tokens[first].glued || tokens[second].glued || (second + 1 < tokens.Count && tokens[second + 1].glued))
-                return false;
+            bool hasLetter = false;
+            bool hasShort = false;
 
-            if (hasAllowedPhrases && (scratch.allowed[first] || scratch.allowed[second]))
-                return false;
+            for (var piece = first; piece < end; piece++)
+            {
+                var token = tokens[piece];
 
-            var a = tokens[first];
-            var b = tokens[second];
+                if ((piece > first && token.glued) || (hasAllowedPhrases && scratch.allowed[piece]))
+                    return false;
 
-            if (VisibleLength(text, a.coreStart, a.coreEnd) < 2 || VisibleLength(text, b.coreStart, b.coreEnd) < 2)
-                return false;
+                int length = VisibleLength(text, token.coreStart, token.coreEnd);
 
-            if (!a.hasLetter && !b.hasLetter)
-                return false;
+                if (length == 0)
+                    return false;
 
-            if (MatchToken(text, a, scratch, out _, out _) != null || MatchToken(text, b, scratch, out _, out _) != null)
-                return false;
+                hasLetter |= token.hasLetter;
+                hasShort |= length <= 2;
+            }
 
-            scratch.glyphCount = 0;
-            AddGlyphs(text, a.coreStart, a.coreEnd, scratch);
-            AddGlyphs(text, b.coreStart, b.coreEnd, scratch);
+            return hasLetter && (count == 2 || hasShort);
+        }
 
-            var entry = Match(scratch, true);
+        // No piece is filtered on its own, or a common word (pen is)
+        private bool PiecesAreFragments(string text, Scratch scratch, int first, int count)
+        {
+            var tokens = scratch.tokens;
 
-            if (entry == null || _dictionary.IsCommon(text, a.coreStart, a.coreEnd) || _dictionary.IsCommon(text, b.coreStart, b.coreEnd))
-                return false;
+            for (var piece = first; piece < first + count; piece++)
+            {
+                var token = tokens[piece];
 
-            scratch.matches.Add(new ProfanityMatch(a.coreStart, b.coreEnd - a.coreStart, entry));
+                if (MatchToken(text, token, scratch, out _, out _) != null)
+                    return false;
+
+                if (VisibleLength(text, token.coreStart, token.coreEnd) >= 2 &&
+                    _dictionary.IsCommon(text, token.coreStart, token.coreEnd))
+                    return false;
+            }
+
             return true;
         }
 

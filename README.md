@@ -60,11 +60,14 @@ A profile decides what is filtered and how. The first time PurrFanity is in a pr
 
 | Setting | What it does |
 |---|---|
+| Enabled | Off lets all text through unchanged |
 | Languages | Which built-in languages to load (`en`) |
 | Categories | Which kinds of words are filtered |
 | Action | What happens to a filtered word |
 | Category Actions | A different action for some categories, for example mask swearing but block slurs |
+| Mask Style | How masked words look, see below |
 | Mask Character | The character used by Mask |
+| Mask Symbols | The characters the Symbols style cycles through |
 | Silly Words | The pool Replace Silly picks from |
 | Detect Evasion | See through digits, symbols and look-alike letters (`fvck`, `azz`), letters typed three or more times, left out vowels (`btch`), and letters split up by spaces or punctuation |
 | Custom Lists | Your own word lists |
@@ -87,6 +90,18 @@ With no profile at all, PurrFanity filters every English category with asterisks
 | `ReplaceSimilar` | `what the heck` |
 | `ReplaceSilly` | `what the meow` |
 | `Block` | the message is rejected |
+
+### Mask styles
+
+| Mask Style | `fuck` becomes |
+|---|---|
+| `All` | `****` |
+| `Vowels` | `f*ck` |
+| `KeepFirst` | `f***` |
+| `KeepEnds` | `f**k` |
+| `Symbols` | `@#$%` |
+
+`Vowels` also hides digits and symbols standing in for letters (`sh1t` becomes `sh*t`). A word with nothing left to hide, like `fvck` with no vowels, falls back to `KeepEnds`.
 
 `ReplaceSimilar` uses the replacements written in the word list and falls back to a silly word for words that have none. If you'd rather mask those, give their categories their own action. Replacements keep the casing of what the player typed (`DAMN` becomes `DARN`).
 
@@ -148,6 +163,26 @@ void CmdSendChat(string message)
 }
 ```
 
+## Streamer mode
+
+Filtering that only some players want, like a streamer mode, has to happen on each player's own machine. Make a profile for it, say `Streamer` in `Resources/PurrFanity`, and filter where messages arrive on the clients:
+
+```csharp
+[PurrFiltered(profile: "Streamer")]
+[ObserversRpc]
+private void ReceiveChat(string sender, string message) { ... }
+```
+
+Then switch it with the player's setting:
+
+```csharp
+PurrFanity.GetProfile("Streamer").enabled = settings.streamerMode;
+```
+
+A profile that's turned off lets text through unchanged, and flipping it costs nothing.
+
+Rules every player should get, like blocking slurs, still belong on the server, on the `ServerRpc` that receives the message.
+
 ## Your own words
 
 Create a list with **Assets > Create > PurrNet > PurrFanity > Word List**, type one entry per line, and add it to a profile's Custom Lists. Long lists can live in text files assigned to the same asset.
@@ -208,7 +243,7 @@ A profile loads a language once its code is added to the profile's Languages.
 ## Good to know
 
 - Matching is on whole words by default, which is what keeps `class` and `assassin` clean. Use wildcards sparingly, and only for stems that do not appear inside ordinary words.
-- A word split in two by a space (`fu ck`) is only caught when neither half is filtered on its own or is a common word, so `pen is` stays clean. Splits into three or more pieces (`f u ck`) are not caught.
+- A word split up by spaces (`fu ck`, `f u ck`) is caught when no piece is filtered on its own or is a common word, so `pen is` stays clean. Up to four pieces are joined, and three or four only when one of them is a letter or two.
 - Real words with double letters that would read as a stretched bad word (`Shiite`, `assess`) are in `allow.txt`.
 - Left out vowels only count for words of five letters or more, with at least four letters typed and no vowels: `btch` is caught, `cnt` is not (it's short for count).
 - The built-in lists are a starting point, not a guarantee. Some entries are ordinary words in other contexts, use Allowed Words to let them through, alone or as part of a phrase.

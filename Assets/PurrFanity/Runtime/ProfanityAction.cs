@@ -8,6 +8,20 @@ namespace PurrFanity
         Block
     }
 
+    public enum MaskStyle
+    {
+        // ****
+        All,
+        // f*ck
+        Vowels,
+        // f***
+        KeepFirst,
+        // f**k
+        KeepEnds,
+        // @#$%
+        Symbols
+    }
+
     public enum ProfanityActionOverride
     {
         Profile = -1,
