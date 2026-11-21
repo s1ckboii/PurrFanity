@@ -1,0 +1,54 @@
+idiot => goof
+idiots => goofs
+idiotic => goofy
+moron => goof
+morons => goofs
+moronic => goofy
+stupid => silly
+dumb => silly
+imbecile => goof
+loser => goof
+losers => goofs
+scumbag => meanie
+scumbags => meanies
+scum => meanie
+douche => meanie
+douchebag* => meanie
+jerk => meanie
+jerks => meanies
+creep => weirdo
+perv => weirdo
+pervert => weirdo
+perverts => weirdos
+slut
+sluts
+slutty
+whore
+whores
+*whore*
+skank
+skanks
+skanky
+hoe
+hoes
+thot
+thots
+tramp
+fatass
+fatso
+lardass
+incel
+incels
+simp
+simps
+nonce
+kys
+kill yourself
+kill urself
+kill your self
+go die
+drink bleach
+neck yourself
+hang yourself
+cuck
+cucks
