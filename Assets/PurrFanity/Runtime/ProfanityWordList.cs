@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// Your own words, on top of the built-in lists.

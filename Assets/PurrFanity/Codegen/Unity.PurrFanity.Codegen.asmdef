@@ -1,6 +1,6 @@
 {
     "name": "Unity.PurrFanity.Codegen",
-    "rootNamespace": "PurrNet.PurrFanity.Codegen",
+    "rootNamespace": "PurrFanity.Codegen",
     "references": [],
     "includePlatforms": [
         "Editor"

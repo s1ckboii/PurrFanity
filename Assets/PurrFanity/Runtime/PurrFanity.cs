@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// A [PurrFiltered] call that was skipped because its text was blocked.

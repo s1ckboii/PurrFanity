@@ -32,12 +32,15 @@ Keep wildcards to stems that don't show up inside ordinary words. `*ass*` would 
 | `phobic.txt` | homophobic and transphobic slurs |
 | `ableism.txt` | slurs aimed at disabilities |
 | `allow.txt` | words that are always fine |
+| `common.txt` | the language's most common everyday words |
 
 Any file can be left out.
 
 `allow.txt` holds real words a list entry would otherwise catch, like `scunthorpe` or `niggle`. A line with several words only lets them through together, so `moby dick` allows that phrase while `dick` on its own is still filtered.
 
 `queer` is left out of `phobic.txt` on purpose, it's widely used to describe oneself.
+
+`common.txt` keeps two words from being read as one: `fu ck` is caught, but `pen is` isn't, since `is` is common. Without it, words split by a space aren't joined at all.
 
 ## Adding a language
 

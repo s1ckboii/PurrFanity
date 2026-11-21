@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// What gets filtered and how.
@@ -29,6 +29,7 @@ namespace PurrNet.PurrFanity
         };
 
         private const string AllowFile = "allow";
+        private const string CommonFile = "common";
 
         [Tooltip("Built-in languages to load, like en. Anyone is welcome to contribute more word lists!")]
         [SerializeField] private string[] _languages = { "en" };
@@ -272,6 +273,11 @@ namespace PurrNet.PurrFanity
 
             if (allow)
                 WordListParser.ParseAllowed(allow.text, dictionary);
+
+            var common = Resources.Load<TextAsset>(folder + CommonFile);
+
+            if (common)
+                WordListParser.ParseCommon(common.text, dictionary);
 
             if (!foundAny)
             {

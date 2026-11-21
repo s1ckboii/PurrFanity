@@ -6,7 +6,7 @@ using Mono.Cecil.Cil;
 using Unity.CompilationPipeline.Common.Diagnostics;
 using Unity.CompilationPipeline.Common.ILPostProcessing;
 
-namespace PurrNet.PurrFanity.Codegen
+namespace PurrFanity.Codegen
 {
     // Unity's entry point, runs the weaver on every assembly that uses PurrFanity
     public class PurrFilteredProcessor : ILPostProcessor

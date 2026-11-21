@@ -1,6 +1,6 @@
 using System;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     [Flags]
     public enum ProfanityCategory

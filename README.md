@@ -3,7 +3,7 @@
 A free, easy to use profanity filter for Unity, made for [PurrNet](https://purrnet.dev/) and usable in any project.
 
 ```csharp
-using PurrNet.PurrFanity;
+using PurrFanity;
 
 string clean = PurrFanity.Filter("what the hell");   // "what the ****"
 ```
@@ -11,7 +11,7 @@ string clean = PurrFanity.Filter("what the hell");   // "what the ****"
 - **Pick what gets filtered.** Words are split into categories (mild swearing, strong swearing, sexual, insults, racism, phobic, ableism). A game for a younger audience ticks everything, another only ticks the slurs.
 - **Pick what happens.** Mask with asterisks, swap for a similar clean word, swap for a silly word, or block the whole message. Each category can have its own action.
 - **One attribute.** Put `[PurrFiltered]` on a string parameter and it's filtered before the method runs. On PurrNet RPCs that's on the receiving side.
-- **Hard to dodge.** Sees through `sh1t`, `$hit`, `fvck`, `shìt`, `shiiiit`, `btch`, `s h i t` and `5_h1__t`, without flagging `class`, `assassin` or `Scunthorpe`.
+- **Hard to dodge.** Sees through `sh1t`, `$hit`, `fvck`, `shìt`, `shiit`, `btch`, `s h i t`, `fu ck` and `5_h1__t`, without flagging `class`, `assassin` or `Scunthorpe`.
 - **Your own words.** Add word list assets, or allow words the built-in lists filter.
 - **No dependencies.** The filter itself does not need PurrNet, or any networking at all.
 
@@ -199,8 +199,8 @@ A profile loads a language once its code is added to the profile's Languages.
 ## Good to know
 
 - Matching is on whole words by default, which is what keeps `class` and `assassin` clean. Use wildcards sparingly, and only for stems that do not appear inside ordinary words.
-- A word split in two by a space (`fu ck`) is not detected.
-- A letter typed twice is not treated as stretched, since that is usually a real word (`Shiite`, `assess`). Three or more times is.
+- A word split in two by a space (`fu ck`) is only caught when neither half is filtered on its own or is a common word, so `pen is` stays clean. Splits into three or more pieces (`f u ck`) are not caught.
+- Real words with double letters that would read as a stretched bad word (`Shiite`, `assess`) are in `allow.txt`.
 - Left out vowels only count for words of five letters or more, with at least four letters typed and no vowels: `btch` is caught, `cnt` is not (it's short for count).
 - The built-in lists are a starting point, not a guarantee. Some entries are ordinary words in other contexts, use Allowed Words to let them through, alone or as part of a phrase.
 - The filter does not judge intent: it cannot tell an insult aimed at someone from the same word used innocently, beyond the allowed phrases.

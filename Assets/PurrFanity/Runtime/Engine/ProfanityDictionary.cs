@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     internal enum MatchKind
     {
@@ -30,7 +30,7 @@ namespace PurrNet.PurrFanity
         // Special characters or numbers can be used to evade filters, like "b4stard" or "sh1t"
         public string alternates;
 
-        // Only runs of three or more count as stretched letters
+        // Runs of two or more count as stretched letters
         public int run;
     }
 
@@ -84,6 +84,7 @@ namespace PurrNet.PurrFanity
         private readonly Node _floating = new Node();
         private readonly Dictionary<char, List<ProfanityPhrase>> _phrases = new Dictionary<char, List<ProfanityPhrase>>();
         private readonly HashSet<string> _allowed = new HashSet<string>();
+        private readonly HashSet<string> _common = new HashSet<string>();
         private readonly Dictionary<char, List<string[]>> _allowedPhrases = new Dictionary<char, List<string[]>>();
         private int _allowedPhraseCount;
         private readonly List<char> _buildLetters = new List<char>();
@@ -96,6 +97,7 @@ namespace PurrNet.PurrFanity
 
         internal bool hasPhrases => _phrases.Count > 0;
         internal bool hasAllowedPhrases => _allowedPhraseCount > 0;
+        internal bool hasCommon => _common.Count > 0;
 
         /// <summary>
         /// Adds a word, a word* / *word / *word* wildcard, or a phrase with spaces in it.
@@ -246,6 +248,7 @@ namespace PurrNet.PurrFanity
             _allowed.Clear();
             _allowedPhrases.Clear();
             _allowedPhraseCount = 0;
+            _common.Clear();
             count = 0;
         }
 
@@ -289,6 +292,22 @@ namespace PurrNet.PurrFanity
 
             letters = _builder.ToString().ToCharArray();
             counts = _buildCounts.ToArray();
+        }
+
+        /// <summary>
+        /// Adds an everyday word. Two words are only read as one when neither is common: "fu ck" but not "pen is".
+        /// </summary>
+        public void AddCommon(string word)
+        {
+            word = word?.Trim();
+
+            if (!string.IsNullOrEmpty(word))
+                _common.Add(FoldToString(word, 0, word.Length));
+        }
+
+        internal bool IsCommon(string text, int start, int end)
+        {
+            return _common.Contains(FoldToString(text, start, end));
         }
 
         internal bool IsAllowed(string text, int start, int end)
@@ -406,7 +425,7 @@ namespace PurrNet.PurrFanity
                 }
             }
 
-            if (search.tolerant && glyph.run >= 3 && glyph.letter == node.letter)
+            if (search.tolerant && glyph.run >= 2 && glyph.letter == node.letter)
             {
                 var stay = step;
                 stay.position++;

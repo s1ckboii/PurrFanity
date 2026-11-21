@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// Finds and replaces listed words in a text. Safe to call from any thread.
@@ -255,6 +255,16 @@ namespace PurrNet.PurrFanity
                     }
                 }
 
+                // Split in two by a space: fu ck
+                if (evasion && MatchPair(text, scratch, index, hasAllowedPhrases))
+                {
+                    if (firstOnly)
+                        return;
+
+                    index += 2;
+                    continue;
+                }
+
                 int groupEnd = index + 1;
 
                 while (evasion && groupEnd < tokens.Count && tokens[groupEnd].glued)
@@ -455,6 +465,47 @@ namespace PurrNet.PurrFanity
             }
 
             return 0;
+        }
+
+        // Two standalone words read as one, only when neither is a word on its own or a common one
+        private bool MatchPair(string text, Scratch scratch, int first, bool hasAllowedPhrases)
+        {
+            var tokens = scratch.tokens;
+            int second = first + 1;
+
+            if (!_dictionary.hasCommon || second >= tokens.Count)
+                return false;
+
+            // Both need to stand alone, not be part of s.h.i.t or 5_/TuP1___D
+            if (tokens[first].glued || tokens[second].glued || (second + 1 < tokens.Count && tokens[second + 1].glued))
+                return false;
+
+            if (hasAllowedPhrases && (scratch.allowed[first] || scratch.allowed[second]))
+                return false;
+
+            var a = tokens[first];
+            var b = tokens[second];
+
+            if (VisibleLength(text, a.coreStart, a.coreEnd) < 2 || VisibleLength(text, b.coreStart, b.coreEnd) < 2)
+                return false;
+
+            if (!a.hasLetter && !b.hasLetter)
+                return false;
+
+            if (MatchToken(text, a, scratch, out _, out _) != null || MatchToken(text, b, scratch, out _, out _) != null)
+                return false;
+
+            scratch.glyphCount = 0;
+            AddGlyphs(text, a.coreStart, a.coreEnd, scratch);
+            AddGlyphs(text, b.coreStart, b.coreEnd, scratch);
+
+            var entry = Match(scratch, true);
+
+            if (entry == null || _dictionary.IsCommon(text, a.coreStart, a.coreEnd) || _dictionary.IsCommon(text, b.coreStart, b.coreEnd))
+                return false;
+
+            scratch.matches.Add(new ProfanityMatch(a.coreStart, b.coreEnd - a.coreStart, entry));
+            return true;
         }
 
         private ProfanityEntry Match(Scratch scratch, bool whole)

@@ -1,7 +1,7 @@
 using System;
 using UnityEngine.Scripting;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// Filters a string parameter before the method runs. On a method, it filters all of them.

@@ -1,4 +1,4 @@
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     public enum ProfanityAction
     {

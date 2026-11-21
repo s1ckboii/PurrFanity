@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// One filtered word or phrase in a checked text.

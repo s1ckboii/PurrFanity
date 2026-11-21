@@ -1,6 +1,6 @@
 using System;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     /// <summary>
     /// Reads the word list text format, one entry per line.
@@ -54,6 +54,31 @@ namespace PurrNet.PurrFanity
 
                 if (dictionary.Add(line, category, replacements))
                     added++;
+            }
+
+            return added;
+        }
+
+        public static int ParseCommon(string text, ProfanityDictionary dictionary)
+        {
+            if (dictionary == null)
+                throw new ArgumentNullException(nameof(dictionary));
+
+            if (string.IsNullOrEmpty(text))
+                return 0;
+
+            int added = 0;
+            var lines = text.Split(_newLines, StringSplitOptions.RemoveEmptyEntries);
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i].Trim();
+
+                if (line.Length == 0 || line[0] == '#')
+                    continue;
+
+                dictionary.AddCommon(line);
+                added++;
             }
 
             return added;

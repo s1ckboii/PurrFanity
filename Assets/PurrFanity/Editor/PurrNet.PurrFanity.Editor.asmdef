@@ -1,6 +1,6 @@
 {
     "name": "PurrNet.PurrFanity.Editor",
-    "rootNamespace": "PurrNet.PurrFanity.Editor",
+    "rootNamespace": "PurrFanity.Editor",
     "references": [
         "PurrNet.PurrFanity"
     ],

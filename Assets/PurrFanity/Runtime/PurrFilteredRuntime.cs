@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using UnityEngine.Scripting;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class PurrFilteredRuntime

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     // Word lists and messages go through the same folding, so they always meet in the same form
     internal static class TextNormalizer

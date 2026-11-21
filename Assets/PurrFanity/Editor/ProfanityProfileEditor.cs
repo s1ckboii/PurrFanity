@@ -1,6 +1,6 @@
 using UnityEditor;
 
-namespace PurrNet.PurrFanity.Editor
+namespace PurrFanity.Editor
 {
     // Adds a Try it box to the profile inspector
     [CustomEditor(typeof(ProfanityProfile))]

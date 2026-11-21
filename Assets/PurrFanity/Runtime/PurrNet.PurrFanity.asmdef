@@ -1,6 +1,6 @@
 {
     "name": "PurrNet.PurrFanity",
-    "rootNamespace": "PurrNet.PurrFanity",
+    "rootNamespace": "PurrFanity",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

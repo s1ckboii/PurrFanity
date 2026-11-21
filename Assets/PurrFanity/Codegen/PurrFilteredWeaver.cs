@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace PurrNet.PurrFanity.Codegen
+namespace PurrFanity.Codegen
 {
     public struct WeaverMessage
     {
@@ -17,7 +17,7 @@ namespace PurrNet.PurrFanity.Codegen
     {
         public const string RuntimeAssembly = "PurrNet.PurrFanity";
 
-        private const string RuntimeNamespace = "PurrNet.PurrFanity";
+        private const string RuntimeNamespace = "PurrFanity";
         private const string AttributeName = RuntimeNamespace + ".PurrFilteredAttribute";
         private const string RuntimeTypeName = "PurrFilteredRuntime";
         private const string OverrideTypeName = "ProfanityActionOverride";

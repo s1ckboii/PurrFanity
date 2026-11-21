@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using Mono.Cecil;
 
-namespace PurrNet.PurrFanity.Codegen
+namespace PurrFanity.Codegen
 {
     // Finds the assemblies the compiled one references, from the paths Unity hands over
     public sealed class CodegenAssemblyResolver : IAssemblyResolver

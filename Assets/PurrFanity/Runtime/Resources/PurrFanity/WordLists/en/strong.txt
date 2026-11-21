@@ -60,6 +60,7 @@ prick => jerk
 pricks => jerks
 pussy => wimp
 pussies => wimps
+cunt
 *cunt*
 twat => twit
 twats => twits

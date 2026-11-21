@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace PurrNet.PurrFanity.Editor
+namespace PurrFanity.Editor
 {
     // First time in a project, makes a Default profile and a word list in Resources/PurrFanity
     internal static class PurrFanitySetup

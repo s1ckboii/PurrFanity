@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace PurrNet.PurrFanity
+namespace PurrFanity
 {
     public sealed class ProfanityFilterSettings
     {
