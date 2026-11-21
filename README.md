@@ -13,7 +13,8 @@ string clean = PurrFanity.Filter("what the hell");   // "what the ****"
 - **One attribute.** Put `[PurrFiltered]` on a string parameter and it's filtered before the method runs. On PurrNet RPCs that's on the receiving side.
 - **Hard to dodge.** Sees through `sh1t`, `$hit`, `fvck`, `shìt`, `shiit`, `btch`, `s h i t`, `fu ck` and `5_h1__t`, without flagging `class`, `assassin` or `Scunthorpe`.
 - **Your own words.** Add word list assets, or allow words the built-in lists filter.
-- **No dependencies.** The filter itself does not need PurrNet, or any networking at all.
+- **Works anywhere.** Made for PurrNet, but the filter needs no networking library at all. Use it for chat, player names, lobby titles, in any Unity project.
+- **No garbage on clean text.** Most messages are clean, and checking them allocates nothing.
 
 English ships built in. Other languages are a folder of text files away, see [Adding a language](#adding-a-language).
 
@@ -196,6 +197,14 @@ The built-in lists live in `Assets/PurrFanity/Runtime/Resources/PurrFanity/WordL
 
 A profile loads a language once its code is added to the profile's Languages.
 
+## Performance
+
+- Clean text allocates nothing: buffers are reused and the original string is returned as is. That includes `[PurrFiltered]` calls.
+- Text with a match allocates the filtered string and the list of matches, around 240 bytes for a short message with one bad word.
+- A short chat message takes around 20 µs in the Editor, about 50,000 messages a second. Builds are faster.
+- A profile loads its word lists once, the first time it's used, on the main thread. After that, filtering is safe from any thread.
+- `[PurrFiltered]` is added at compile time, so there's no reflection while the game runs.
+
 ## Good to know
 
 - Matching is on whole words by default, which is what keeps `class` and `assassin` clean. Use wildcards sparingly, and only for stems that do not appear inside ordinary words.
@@ -204,7 +213,6 @@ A profile loads a language once its code is added to the profile's Languages.
 - Left out vowels only count for words of five letters or more, with at least four letters typed and no vowels: `btch` is caught, `cnt` is not (it's short for count).
 - The built-in lists are a starting point, not a guarantee. Some entries are ordinary words in other contexts, use Allowed Words to let them through, alone or as part of a phrase.
 - The filter does not judge intent: it cannot tell an insult aimed at someone from the same word used innocently, beyond the allowed phrases.
-- A profile loads its word lists the first time it is used, on the main thread. After that, filtering is safe from any thread.
 
 ## License
 
