@@ -218,7 +218,11 @@ namespace PurrFanity
                 return;
 
             if (upper > 1 && lower == 0)
-                builder.Append(replacement.ToUpperInvariant());
+            {
+                // Char by char, ToUpperInvariant on the string would allocate
+                for (var i = 0; i < replacement.Length; i++)
+                    builder.Append(char.ToUpperInvariant(replacement[i]));
+            }
             else if (startsUpper)
             {
                 builder.Append(char.ToUpperInvariant(replacement[0]));
