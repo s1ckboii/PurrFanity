@@ -130,9 +130,7 @@ namespace PurrFanity
         /// </summary>
         public static bool TryFilter(string text, out string filtered, ProfanityProfile profile = null)
         {
-            var result = Resolve(profile).filter.Check(text);
-            filtered = result.filtered;
-            return !result.blocked;
+            return Resolve(profile).filter.TryFilter(text, out filtered);
         }
 
         /// <summary>

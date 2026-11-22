@@ -43,6 +43,75 @@ namespace PurrFanity
         public int[][] counts;
     }
 
+    // Folded words that can be looked up straight from the text, so a lookup doesn't allocate
+    internal sealed class FoldedWords
+    {
+        private readonly Dictionary<uint, List<string>> _byHash = new Dictionary<uint, List<string>>();
+
+        public int Count { get; private set; }
+
+        public void Add(string folded)
+        {
+            uint hash = Hash(folded, 0, folded.Length, false);
+
+            if (!_byHash.TryGetValue(hash, out var words))
+            {
+                words = new List<string>(1);
+                _byHash.Add(hash, words);
+            }
+
+            if (words.Contains(folded))
+                return;
+
+            words.Add(folded);
+            Count++;
+        }
+
+        public bool Contains(string text, int start, int end)
+        {
+            if (!_byHash.TryGetValue(Hash(text, start, end, true), out var words))
+                return false;
+
+            for (var i = 0; i < words.Count; i++)
+            {
+                if (SameWord(words[i], text, start, end))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public void Clear()
+        {
+            _byHash.Clear();
+            Count = 0;
+        }
+
+        private static uint Hash(string text, int start, int end, bool fold)
+        {
+            uint hash = 2166136261; // FNV-1a again
+
+            for (var i = start; i < end; i++)
+                hash = (hash ^ (fold ? TextNormalizer.Fold(text[i]) : text[i])) * 16777619;
+
+            return hash;
+        }
+
+        private static bool SameWord(string word, string text, int start, int end)
+        {
+            if (word.Length != end - start)
+                return false;
+
+            for (var i = 0; i < word.Length; i++)
+            {
+                if (word[i] != TextNormalizer.Fold(text[start + i]))
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
     /// <summary>
     /// Compiled words a filter looks for.
     /// </summary>
@@ -83,8 +152,8 @@ namespace PurrFanity
         private readonly Node _anchored = new Node();
         private readonly Node _floating = new Node();
         private readonly Dictionary<char, List<ProfanityPhrase>> _phrases = new Dictionary<char, List<ProfanityPhrase>>();
-        private readonly HashSet<string> _allowed = new HashSet<string>();
-        private readonly HashSet<string> _common = new HashSet<string>();
+        private readonly FoldedWords _allowed = new FoldedWords();
+        private readonly FoldedWords _common = new FoldedWords();
         private readonly Dictionary<char, List<string[]>> _allowedPhrases = new Dictionary<char, List<string[]>>();
         private int _allowedPhraseCount;
         private readonly List<char> _buildLetters = new List<char>();
@@ -307,15 +376,12 @@ namespace PurrFanity
 
         internal bool IsCommon(string text, int start, int end)
         {
-            return _common.Contains(FoldToString(text, start, end));
+            return _common.Contains(text, start, end);
         }
 
         internal bool IsAllowed(string text, int start, int end)
         {
-            if (_allowed.Count == 0)
-                return false;
-
-            return _allowed.Contains(FoldToString(text, start, end));
+            return _allowed.Count > 0 && _allowed.Contains(text, start, end);
         }
 
         private string FoldToString(string text, int start, int end)

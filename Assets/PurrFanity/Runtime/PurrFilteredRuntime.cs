@@ -14,19 +14,17 @@ namespace PurrFanity
                 return true;
 
             var filter = PurrFanity.GetProfile(profile).filter;
-            var result = action == ProfanityActionOverride.Profile ? filter.Check(text) : filter.Check(text, (ProfanityAction)action);
+            ProfanityAction? forced = action == ProfanityActionOverride.Profile ? (ProfanityAction?)null : (ProfanityAction)action;
 
-            if (!result.hasProfanity)
-                return true;
-
-            if (result.blocked)
+            if (filter.TryFilter(text, out var filtered, forced))
             {
-                PurrFanity.RaiseCallBlocked(new ProfanityBlockedCall(target, method, result));
-                return false;
+                text = filtered;
+                return true;
             }
 
-            text = result.filtered;
-            return true;
+            // Blocked is rare, so only then the full result gets built for the event
+            PurrFanity.RaiseCallBlocked(new ProfanityBlockedCall(target, method, filter.Check(text, forced)));
+            return false;
         }
     }
 }

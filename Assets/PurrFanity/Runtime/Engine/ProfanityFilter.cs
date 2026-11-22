@@ -71,7 +71,34 @@ namespace PurrFanity
         /// </summary>
         public string Filter(string text)
         {
-            return Check(text).filtered;
+            TryFilter(text, out var filtered);
+            return filtered;
+        }
+
+        /// <summary>
+        /// Like Check, but skips the list of matches. Returns false when the text is blocked.
+        /// </summary>
+        public bool TryFilter(string text, out string filtered, ProfanityAction? forcedAction = null)
+        {
+            filtered = text;
+
+            if (!_settings.enabled || string.IsNullOrEmpty(text))
+                return true;
+
+            var scratch = _scratch ??= new Scratch();
+            FindMatches(text, scratch, false);
+
+            if (scratch.matches.Count == 0)
+                return true;
+
+            if (IsBlocked(scratch.matches, forcedAction, out _))
+            {
+                filtered = string.Empty;
+                return false;
+            }
+
+            filtered = Replace(text, scratch, forcedAction);
+            return true;
         }
 
         public ProfanityResult Check(string text)
@@ -94,10 +121,19 @@ namespace PurrFanity
                 return ProfanityResult.Clean(text);
 
             var matches = scratch.matches.ToArray();
-            var categories = ProfanityCategory.None;
+
+            if (IsBlocked(scratch.matches, forcedAction, out var categories))
+                return new ProfanityResult(text, string.Empty, true, categories, matches);
+
+            return new ProfanityResult(text, Replace(text, scratch, forcedAction), false, categories, matches);
+        }
+
+        private bool IsBlocked(List<ProfanityMatch> matches, ProfanityAction? forcedAction, out ProfanityCategory categories)
+        {
+            categories = ProfanityCategory.None;
             bool blocked = false;
 
-            for (var i = 0; i < matches.Length; i++)
+            for (var i = 0; i < matches.Count; i++)
             {
                 categories |= matches[i].category;
 
@@ -105,15 +141,18 @@ namespace PurrFanity
                     blocked = true;
             }
 
-            if (blocked)
-                return new ProfanityResult(text, string.Empty, true, categories, matches);
+            return blocked;
+        }
 
+        private string Replace(string text, Scratch scratch, ProfanityAction? forcedAction)
+        {
+            var matches = scratch.matches;
             var builder = scratch.builder;
             builder.Clear();
 
             int position = 0;
 
-            for (var i = 0; i < matches.Length; i++)
+            for (var i = 0; i < matches.Count; i++)
             {
                 var match = matches[i];
                 builder.Append(text, position, match.index - position);
@@ -122,8 +161,7 @@ namespace PurrFanity
             }
 
             builder.Append(text, position, text.Length - position);
-
-            return new ProfanityResult(text, builder.ToString(), false, categories, matches);
+            return builder.ToString();
         }
 
         private void AppendReplacement(StringBuilder builder, string text, ProfanityMatch match, ProfanityAction action)
