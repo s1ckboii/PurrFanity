@@ -20,15 +20,27 @@ namespace PurrFanity
         public readonly string word;
         public readonly ProfanityCategory category;
 
-        internal readonly string[] replacements;
+        /// <summary>
+        /// Language of the list it's from, like en. Null for lists without one.
+        /// </summary>
+        public readonly string language;
 
-        internal ProfanityMatch(int index, int length, ProfanityEntry entry)
+        internal readonly string[] replacements;
+        internal readonly uint languageBit;
+        internal readonly bool special;
+        internal readonly int token;
+
+        internal ProfanityMatch(int index, int length, ProfanityEntry entry, int token = -1)
         {
             this.index = index;
             this.length = length;
+            this.token = token;
             word = entry.word;
             category = entry.category;
+            language = entry.languageCode;
             replacements = entry.replacements;
+            languageBit = entry.language;
+            special = entry.special;
         }
     }
 

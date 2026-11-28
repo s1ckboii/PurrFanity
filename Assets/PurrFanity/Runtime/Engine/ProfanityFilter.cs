@@ -30,6 +30,14 @@ namespace PurrFanity
             public bool single;
         }
 
+        // A match on a word that's ordinary in another language, settled once the whole text is read
+        private struct Undecided
+        {
+            public int match;
+            public uint others;
+            public bool filtered;
+        }
+
         private sealed class Scratch
         {
             public Glyph[] glyphs = new Glyph[128];
@@ -39,6 +47,7 @@ namespace PurrFanity
             public readonly List<Token> tokens = new List<Token>(32);
             public readonly List<bool> allowed = new List<bool>(32);
             public readonly List<ProfanityMatch> matches = new List<ProfanityMatch>(8);
+            public readonly List<Undecided> undecided = new List<Undecided>(4);
             public readonly StringBuilder builder = new StringBuilder(128);
         }
 
@@ -56,37 +65,37 @@ namespace PurrFanity
             _settings = settings ?? new ProfanityFilterSettings();
         }
 
-        public bool Contains(string text)
+        public bool Contains(string text, string language = null)
         {
-            if (!_settings.enabled || string.IsNullOrEmpty(text))
+            if (!_settings.Enabled || string.IsNullOrEmpty(text))
                 return false;
 
             var scratch = _scratch ??= new Scratch();
-            FindMatches(text, scratch, true);
+            FindMatches(text, scratch, true, language);
             return scratch.matches.Count > 0;
         }
 
         /// <summary>
         /// Returns the filtered text, or an empty string when it's blocked.
         /// </summary>
-        public string Filter(string text)
+        public string Filter(string text, string language = null)
         {
-            TryFilter(text, out var filtered);
+            TryFilter(text, out var filtered, null, language);
             return filtered;
         }
 
         /// <summary>
         /// Like Check, but skips the list of matches. Returns false when the text is blocked.
         /// </summary>
-        public bool TryFilter(string text, out string filtered, ProfanityAction? forcedAction = null)
+        public bool TryFilter(string text, out string filtered, ProfanityAction? forcedAction = null, string language = null)
         {
             filtered = text;
 
-            if (!_settings.enabled || string.IsNullOrEmpty(text))
+            if (!_settings.Enabled || string.IsNullOrEmpty(text))
                 return true;
 
             var scratch = _scratch ??= new Scratch();
-            FindMatches(text, scratch, false);
+            FindMatches(text, scratch, false, language);
 
             if (scratch.matches.Count == 0)
                 return true;
@@ -101,21 +110,16 @@ namespace PurrFanity
             return true;
         }
 
-        public ProfanityResult Check(string text)
-        {
-            return Check(text, null);
-        }
-
         /// <summary>
-        /// Like Check(string text), but uses forcedAction for every match.
+        /// The filtered text, whether it's blocked, and every match. A forcedAction is used for every match.
         /// </summary>
-        public ProfanityResult Check(string text, ProfanityAction? forcedAction)
+        public ProfanityResult Check(string text, ProfanityAction? forcedAction = null, string language = null)
         {
-            if (!_settings.enabled || string.IsNullOrEmpty(text))
+            if (!_settings.Enabled || string.IsNullOrEmpty(text))
                 return ProfanityResult.Clean(text);
 
             var scratch = _scratch ??= new Scratch();
-            FindMatches(text, scratch, false);
+            FindMatches(text, scratch, false, language);
 
             if (scratch.matches.Count == 0)
                 return ProfanityResult.Clean(text);
@@ -173,11 +177,11 @@ namespace PurrFanity
 
             // No similar word listed, a silly one is better than **** - might change later (watch this stay like this for a decade)
             if (action == ProfanityAction.ReplaceSilly || (action == ProfanityAction.ReplaceSimilar && IsEmpty(pool)))
-                pool = IsEmpty(_settings.sillyWords) ? ProfanityFilterSettings.defaultSillyWords : _settings.sillyWords;
+                pool = IsEmpty(_settings.SillyWords) ? ProfanityFilterSettings.defaultSillyWords : _settings.SillyWords;
 
             if (IsEmpty(pool))
             {
-                AppendMask(builder, text, match, _settings.maskStyle);
+                AppendMask(builder, text, match, _settings.MaskStyle);
                 return;
             }
 
@@ -250,7 +254,7 @@ namespace PurrFanity
                 lastLetter = i;
             }
 
-            var symbols = string.IsNullOrEmpty(_settings.maskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _settings.maskSymbols;
+            var symbols = string.IsNullOrEmpty(_settings.MaskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _settings.MaskSymbols;
             int masked = 0;
 
             for (var i = 0; i < match.length; i++)
@@ -263,7 +267,7 @@ namespace PurrFanity
                     continue;
                 }
 
-                builder.Append(style == MaskStyle.Symbols ? symbols[(match.index + masked) % symbols.Length] : _settings.maskCharacter);
+                builder.Append(style == MaskStyle.Symbols ? symbols[(match.index + masked) % symbols.Length] : _settings.MaskCharacter);
                 masked++;
             }
 
@@ -294,21 +298,23 @@ namespace PurrFanity
 
         private const int MaxSpelled = 16;
 
-        private void FindMatches(string text, Scratch scratch, bool firstOnly)
+        private void FindMatches(string text, Scratch scratch, bool firstOnly, string language)
         {
             var tokens = scratch.tokens;
             var matches = scratch.matches;
+            var undecided = scratch.undecided;
 
             scratch.letters.Clear();
             scratch.counts.Clear();
             tokens.Clear();
             matches.Clear();
+            undecided.Clear();
 
-            bool evasion = _settings.detectEvasion;
+            bool evasion = _settings.DetectEvasion;
             Tokenize(text, scratch, evasion);
 
             var allowed = scratch.allowed;
-            bool hasAllowedPhrases = _dictionary.hasAllowedPhrases;
+            bool hasAllowedPhrases = _dictionary.HasAllowedPhrases;
 
             if (hasAllowedPhrases)
             {
@@ -326,7 +332,7 @@ namespace PurrFanity
                 }
             }
 
-            bool hasPhrases = _dictionary.hasPhrases;
+            bool hasPhrases = _dictionary.HasPhrases;
             int index = 0;
 
             while (index < tokens.Count)
@@ -401,13 +407,21 @@ namespace PurrFanity
                     if (entry == null)
                         continue;
 
-                    if (_dictionary.IsAllowed(text, token.coreStart, token.coreEnd))
+                    if (IsAllowed(text, token, entry))
                     {
                         groupAllowed = true;
                         continue;
                     }
 
-                    matches.Add(new ProfanityMatch(matchStart, matchEnd - matchStart, entry));
+                    matches.Add(new ProfanityMatch(matchStart, matchEnd - matchStart, entry, t));
+
+                    uint others = OtherLanguages(text, token, entry);
+
+                    if (others != 0)
+                    {
+                        undecided.Add(new Undecided { match = matches.Count - 1, others = others });
+                        continue;
+                    }
 
                     if (firstOnly)
                         return;
@@ -430,6 +444,142 @@ namespace PurrFanity
 
                 index = next;
             }
+
+            if (undecided.Count > 0)
+                Settle(text, scratch, language);
+        }
+
+        private bool IsAllowed(string text, Token token, ProfanityEntry entry)
+        {
+            if (!_dictionary.SameAccents(text, token.coreStart, token.coreEnd, entry))
+                return true;
+
+            uint allowed = _dictionary.AllowedLanguages(text, token.coreStart, token.coreEnd);
+
+            return allowed != 0 && (allowed == ProfanityDictionary.AnyLanguage || entry.language == 0 || (allowed & entry.language) != 0);
+        }
+
+        // The matched word is an ordinary word in other loaded langs (ász for english ass)
+        private uint OtherLanguages(string text, Token token, ProfanityEntry entry)
+        {
+            if (entry.language == 0 || !_dictionary.HasLanguages)
+                return 0;
+
+            uint languages = _dictionary.WordLanguages(text, token.coreStart, token.coreEnd);
+
+            // Typed with symbols it isnt listed anywhere, but the word it reads as might be
+            if (entry.kind == MatchKind.Exact)
+                languages |= _dictionary.WordLanguages(entry.word, 0, entry.word.Length);
+
+            return languages == ProfanityDictionary.AnyLanguage ? 0 : languages & ~entry.language;
+        }
+
+        private const int ContextWords = 4;
+
+        private void Settle(string text, Scratch scratch, string language)
+        {
+            var matches = scratch.matches;
+            var undecided = scratch.undecided;
+            uint hint = _dictionary.FindLanguage(string.IsNullOrEmpty(language) ? _settings.FallbackLanguage : language);
+
+            // All decided first, every one reads the others as still undecided
+            for (var i = 0; i < undecided.Count; i++)
+            {
+                var word = undecided[i];
+                word.filtered = Filters(text, scratch, word, hint);
+                undecided[i] = word;
+            }
+
+            // From the back, so removing one keeps the earlier indexes
+            for (var i = undecided.Count - 1; i >= 0; i--)
+            {
+                if (!undecided[i].filtered)
+                    matches.RemoveAt(undecided[i].match);
+            }
+        }
+
+        private bool Filters(string text, Scratch scratch, Undecided word, uint hint)
+        {
+            var tokens = scratch.tokens;
+            var match = scratch.matches[word.match];
+            var token = tokens[match.token];
+            uint own = match.languageBit;
+            uint others = word.others;
+
+            // Its own letters: ász is Hungarian, whatever is around it
+            uint letters = _dictionary.LetterLanguages(text, token.coreStart, token.coreEnd);
+            bool ownLetters = (letters & own) != 0;
+
+            if (letters != 0 && ownLetters != ((letters & others) != 0))
+                return ownLetters;
+
+            // Typed without the listed words accents by someone who types them
+            if (match.special && !ProfanityDictionary.HasSpecialLetter(text, token.coreStart, token.coreEnd))
+            {
+                for (var t = 0; t < tokens.Count; t++)
+                {
+                    if (t != match.token && (_dictionary.LetterLanguages(text, tokens[t].coreStart, tokens[t].coreEnd) & own) != 0)
+                        return false;
+                }
+            }
+
+            // The words around it
+            int score = 0;
+            int first = Math.Max(0, match.token - ContextWords);
+            int last = Math.Min(tokens.Count - 1, match.token + ContextWords);
+
+            for (var t = first; t <= last; t++)
+            {
+                if (t == match.token)
+                    continue;
+
+                uint languages = TokenLanguages(text, scratch, t);
+
+                if (languages == ProfanityDictionary.AnyLanguage)
+                    continue;
+
+                bool isOwn = (languages & own) != 0;
+                bool isOther = (languages & others) != 0;
+
+                if (isOwn && !isOther)
+                    score++;
+                else if (isOther && !isOwn)
+                    score--;
+            }
+
+            if (score != 0)
+                return score > 0;
+
+            return (hint & others) == 0;
+        }
+
+        private uint TokenLanguages(string text, Scratch scratch, int index)
+        {
+            var token = scratch.tokens[index];
+            uint languages = _dictionary.WordLanguages(text, token.coreStart, token.coreEnd) | _dictionary.LetterLanguages(text, token.coreStart, token.coreEnd);
+
+            var matches = scratch.matches;
+
+            for (var m = 0; m < matches.Count; m++)
+            {
+                if (matches[m].token == index && !IsUndecided(scratch, m))
+                    languages |= matches[m].languageBit;
+            }
+
+            return languages;
+        }
+
+        private static bool IsUndecided(Scratch scratch, int match)
+        {
+            var undecided = scratch.undecided;
+
+            for (var i = 0; i < undecided.Count; i++)
+            {
+                if (undecided[i].match == match)
+                    return true;
+            }
+
+            return false;
         }
 
         private static void Tokenize(string text, Scratch scratch, bool evasion)
@@ -566,7 +716,7 @@ namespace PurrFanity
         // Standalone words read as one word, longest first. Returns how many were used, 0 when none.
         private int MatchPieces(string text, Scratch scratch, int first, bool hasAllowedPhrases)
         {
-            if (!_dictionary.hasCommon)
+            if (!_dictionary.HasCommon)
                 return 0;
 
             var tokens = scratch.tokens;
@@ -664,12 +814,12 @@ namespace PurrFanity
                 i = end;
             }
 
-            return _dictionary.Match(glyphs, count, _settings.detectEvasion, whole);
+            return _dictionary.Match(glyphs, count, _settings.DetectEvasion, whole);
         }
 
         private void AddGlyphs(string text, int start, int end, Scratch scratch)
         {
-            bool evasion = _settings.detectEvasion;
+            bool evasion = _settings.DetectEvasion;
 
             for (var i = start; i < end; i++)
             {

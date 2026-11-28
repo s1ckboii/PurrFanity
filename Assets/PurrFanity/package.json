@@ -1,6 +1,6 @@
 {
   "name": "dev.purrnet.purrfanity",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "PurrFanity",
   "description": "A free, easy to use profanity filter for Unity, made for PurrNet. Pick which kinds of words to filter, then mask them, swap them for similar or silly words, or block the message. Works on any string, and on RPCs with a single [PurrFiltered] attribute.",
   "unity": "2022.3",

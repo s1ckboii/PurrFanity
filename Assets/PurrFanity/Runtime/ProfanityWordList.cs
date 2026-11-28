@@ -18,16 +18,30 @@ namespace PurrFanity
         [Tooltip("Text files in the same format, for long lists.")]
         [SerializeField] private TextAsset[] _files;
 
+        [Tooltip("Language of these words. Any filters them in every message.")]
+        [Language("Any")]
+        [SerializeField] private string _language = string.Empty;
+
         // Goes up whenever any list changes, so profiles know to rebuild
         internal static int changeCount;
 
         public ProfanityCategory category => _category;
 
-        public string words => _words;
+        public string Words => _words;
+
+        public string Language
+        {
+            get => _language;
+            set
+            {
+                _language = value;
+                changeCount++;
+            }
+        }
 
         public int AddTo(ProfanityDictionary dictionary)
         {
-            int added = WordListParser.Parse(_words, _category, dictionary);
+            int added = WordListParser.Parse(_words, _category, dictionary, _language);
 
             if (_files == null)
                 return added;
@@ -35,7 +49,7 @@ namespace PurrFanity
             for (var i = 0; i < _files.Length; i++)
             {
                 if (_files[i])
-                    added += WordListParser.Parse(_files[i].text, _category, dictionary);
+                    added += WordListParser.Parse(_files[i].text, _category, dictionary, _language);
             }
 
             return added;

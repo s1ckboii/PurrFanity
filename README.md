@@ -13,10 +13,11 @@ string clean = PurrFanity.Filter("what the hell");   // "what the ****"
 - **One attribute.** Put `[PurrFiltered]` on a string parameter and it's filtered before the method runs. On PurrNet RPCs that's on the receiving side.
 - **Hard to dodge.** Sees through `sh1t`, `$hit`, `fvck`, `shìt`, `shiit`, `btch`, `s h i t`, `fu ck` and `5_h1__t`, without flagging `class`, `assassin` or `Scunthorpe`.
 - **Your own words.** Add word list assets, or allow words the built-in lists filter.
+- **Several languages at once.** English and Hungarian ship built in. Mixed messages just work, and a word that's fine in one language but filtered in another (`asz` is Hungarian for ace and an English dodge of `ass`) is read in the language of the words around it.
 - **Works anywhere.** Made for PurrNet, but the filter needs no networking library at all. Use it for chat, player names, lobby titles, in any Unity project.
 - **No garbage on clean text.** Most messages are clean, and checking them allocates nothing.
 
-English ships built in. Other languages are a folder of text files away, see [Adding a language](#adding-a-language).
+English (`en`) and Hungarian (`hu`) ship built in, and new profiles load both. Other languages are a folder of text files away, see [Adding a language](#adding-a-language).
 
 ## Installation
 
@@ -52,7 +53,7 @@ bool bad2 = PurrFanity.Contains(playerName, out ProfanityCategory categories);
 ProfanityResult result = PurrFanity.Check(message);
 ```
 
-Every call takes an optional profile as its last argument. Without one, the default profile is used.
+Every call takes an optional profile, and after it the sender's language. Without a profile, the default one is used. The language is only needed with more than one, see [Several languages](#several-languages).
 
 ## Profiles
 
@@ -61,7 +62,8 @@ A profile decides what is filtered and how. The first time PurrFanity is in a pr
 | Setting | What it does |
 |---|---|
 | Enabled | Off lets all text through unchanged |
-| Languages | Which built-in languages to load (`en`) |
+| Languages | Which built-in languages to load, all of them by default (`en`, `hu`) |
+| Fallback Language | Settles a word that's fine in one loaded language and filtered in another when nothing else does, see [Several languages](#several-languages) |
 | Categories | Which kinds of words are filtered |
 | Action | What happens to a filtered word |
 | Category Actions | A different action for some categories, for example mask swearing but block slurs |
@@ -176,7 +178,7 @@ private void ReceiveChat(string sender, string message) { ... }
 Then switch it with the player's setting:
 
 ```csharp
-PurrFanity.GetProfile("Streamer").enabled = settings.streamerMode;
+PurrFanity.GetProfile("Streamer").Enabled = settings.streamerMode;
 ```
 
 A profile that's turned off lets text through unchanged, and flipping it costs nothing.
@@ -226,6 +228,33 @@ profile.AllowWord("hell yeah");
 
 Allowed phrases are matched as written (case, accents and punctuation between the words are ignored), so `moby d1ck` is still filtered.
 
+## Several languages
+
+Every loaded language is checked on every message, so mixed messages work as they are:
+
+```
+ez egy fucking jó game     ->  ez egy ******* jó game
+this game is kurva jó      ->  this game is ***** jó
+```
+
+Some words are fine in one language and filtered in another. `asz` is the Hungarian `ász` (ace) typed without its accent, and an English way to dodge `ass`. Those are read in the language of the message:
+
+```
+van egy asz a kezemben     ->  van egy asz a kezemben
+nice asz lol               ->  nice *** lol
+kiss my ász                ->  kiss my ász
+```
+
+When the message doesn't tell, like a lone `asz`, the sender's language decides, then the profile's Fallback Language (English by default). Set to None, the word is filtered. Pass the sender's language when you have it, for example the language their game is set to:
+
+```csharp
+string clean = PurrFanity.Filter(message, language: sender.language);   // "en", "hu", "en-US" reads as en
+```
+
+A Word List asset can have a language too. Leave it empty and its words are filtered in every message.
+
+How it decides, and how to find look-alikes when adding a language, is in [Documentation~/WordLists.md](Assets/PurrFanity/Documentation~/WordLists.md#several-languages).
+
 ## Adding a language
 
 The built-in lists live in `Assets/PurrFanity/Runtime/Resources/PurrFanity/WordLists/<language>/`. To add a language, copy the `en` folder, rename it to the language code, replace the words and open a pull request against `dev`. The list format and files are described in [Documentation~/WordLists.md](Assets/PurrFanity/Documentation~/WordLists.md).
@@ -235,8 +264,8 @@ A profile loads a language once its code is added to the profile's Languages.
 ## Performance
 
 - Clean text allocates nothing: buffers are reused and the original string is returned as is. That includes `[PurrFiltered]` calls.
-- Text with a match allocates the filtered string and the list of matches, around 240 bytes for a short message with one bad word.
-- A short chat message takes around 20 µs in the Editor, about 50,000 messages a second. Builds are faster.
+- Text with a match allocates little more than the filtered string: `BITCH` to `BISCUIT` is 72 bytes, a long message with four swaps under 200. Before 0.2.0 one swap was around 240 bytes. `Check` also allocates its list of matches.
+- In the Editor a short message takes a few µs and a long one around 55 µs. Builds are faster.
 - A profile loads its word lists once, the first time it's used, on the main thread. After that, filtering is safe from any thread.
 - `[PurrFiltered]` is added at compile time, so there's no reflection while the game runs.
 

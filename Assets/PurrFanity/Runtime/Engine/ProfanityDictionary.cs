@@ -18,8 +18,24 @@ namespace PurrFanity
         public string[] replacements;
         public MatchKind kind;
 
+        // Bit of the language the word came from, 0 for lists without one
+        public uint language;
+        public string languageCode;
+
+        // Spelled with letters that only some languages use (ász)
+        public bool special;
+
         public bool anchoredStart => kind == MatchKind.Exact || kind == MatchKind.Prefix;
         public bool anchoredEnd => kind == MatchKind.Exact || kind == MatchKind.Suffix;
+    }
+
+    // An allowed *piece* of a word, for roots that show up inside ordinary words (szarvas)
+    internal struct AllowedPiece
+    {
+        public string letters;
+        public bool start;
+        public bool end;
+        public uint languages;
     }
 
     // One character of checked text, with the letters it could stand for
@@ -46,39 +62,54 @@ namespace PurrFanity
     // Folded words that can be looked up straight from the text, so a lookup doesn't allocate
     internal sealed class FoldedWords
     {
-        private readonly Dictionary<uint, List<string>> _byHash = new Dictionary<uint, List<string>>();
+        private struct Word
+        {
+            public string text;
+            public uint languages;
+        }
+
+        private readonly Dictionary<uint, List<Word>> _byHash = new Dictionary<uint, List<Word>>();
 
         public int Count { get; private set; }
 
-        public void Add(string folded)
+        public void Add(string folded, uint languages)
         {
             uint hash = Hash(folded, 0, folded.Length, false);
 
             if (!_byHash.TryGetValue(hash, out var words))
             {
-                words = new List<string>(1);
+                words = new List<Word>(1);
                 _byHash.Add(hash, words);
             }
 
-            if (words.Contains(folded))
-                return;
+            for (var i = 0; i < words.Count; i++)
+            {
+                if (words[i].text != folded)
+                    continue;
 
-            words.Add(folded);
+                var word = words[i];
+                word.languages |= languages;
+                words[i] = word;
+                return;
+            }
+
+            words.Add(new Word { text = folded, languages = languages });
             Count++;
         }
 
-        public bool Contains(string text, int start, int end)
+        // The languages the word is listed for, 0 when it isn't
+        public uint Find(string text, int start, int end)
         {
-            if (!_byHash.TryGetValue(Hash(text, start, end, true), out var words))
-                return false;
+            if (Count == 0 || !_byHash.TryGetValue(Hash(text, start, end, true), out var words))
+                return 0;
 
             for (var i = 0; i < words.Count; i++)
             {
-                if (SameWord(words[i], text, start, end))
-                    return true;
+                if (SameWord(words[i].text, text, start, end))
+                    return words[i].languages;
             }
 
-            return false;
+            return 0;
         }
 
         public void Clear()
@@ -156,22 +187,49 @@ namespace PurrFanity
         private readonly FoldedWords _common = new FoldedWords();
         private readonly Dictionary<char, List<string[]>> _allowedPhrases = new Dictionary<char, List<string[]>>();
         private int _allowedPhraseCount;
+        private readonly List<AllowedPiece> _allowedPieces = new List<AllowedPiece>();
+        private readonly List<string> _languages = new List<string>();
+
+        // Letters past ASCII and the languages whose words use them (ő, ű: hu)
+        private readonly Dictionary<char, uint> _letters = new Dictionary<char, uint>();
         private readonly List<char> _buildLetters = new List<char>();
         private readonly List<int> _buildCounts = new List<int>();
         private readonly List<int> _buildParts = new List<int>();
         private readonly StringBuilder _builder = new StringBuilder();
 
-        public int count { get; private set; }
-        public int allowedCount => _allowed.Count + _allowedPhraseCount;
+        // Words allowed or added without a language count for all of them
+        internal const uint AnyLanguage = uint.MaxValue;
 
-        internal bool hasPhrases => _phrases.Count > 0;
-        internal bool hasAllowedPhrases => _allowedPhraseCount > 0;
-        internal bool hasCommon => _common.Count > 0;
+        // One bit each, the last one would read as AnyLanguage
+        private const int MaxLanguages = 31;
+
+        public int Count { get; private set; }
+        public int AllowedCount => _allowed.Count + _allowedPhraseCount;
+
+        /// <summary>
+        /// Codes of the languages words were added for, like en and hu.
+        /// </summary>
+        public IReadOnlyList<string> Languages => _languages;
+
+        internal bool HasPhrases => _phrases.Count > 0;
+        internal bool HasAllowedPhrases => _allowedPhraseCount > 0;
+        internal bool HasCommon => _common.Count > 0;
+
+        // Telling languages apart only matters with two or more
+        internal bool HasLanguages => _languages.Count > 1;
 
         /// <summary>
         /// Adds a word, a word* / *word / *word* wildcard, or a phrase with spaces in it.
         /// </summary>
         public bool Add(string pattern, ProfanityCategory category, params string[] replacements)
+        {
+            return Add(pattern, category, null, replacements);
+        }
+
+        /// <summary>
+        /// Adds a word, a word* / *word / *word* wildcard, or a phrase with spaces in it. Language specific.
+        /// </summary>
+        public bool Add(string pattern, ProfanityCategory category, string language, string[] replacements)
         {
             if (string.IsNullOrWhiteSpace(pattern))
                 return false;
@@ -211,11 +269,17 @@ namespace PurrFanity
             if (replacements != null && replacements.Length == 0)
                 replacements = null;
 
+            uint bit = LanguageBit(language);
+            NoteLetters(body, bit);
+
             var entry = new ProfanityEntry
             {
                 word = body.ToLowerInvariant(),
                 category = category,
-                replacements = replacements
+                replacements = replacements,
+                language = bit,
+                languageCode = bit != 0 ? _languages[BitIndex(bit)] : null,
+                special = HasSpecialLetter(body, 0, body.Length)
             };
 
             if (_buildParts.Count == 1)
@@ -251,7 +315,7 @@ namespace PurrFanity
                 list.Add(phrase);
             }
 
-            count++;
+            Count++;
             return true;
         }
 
@@ -260,10 +324,27 @@ namespace PurrFanity
         /// </summary>
         public void Allow(string word)
         {
+            Allow(word, null);
+        }
+
+        /// <summary>
+        /// Marks a word or phrase as always fine, like "Scunthorpe" or "moby dick". Language specific.
+        /// </summary>
+        public void Allow(string word, string language)
+        {
             if (string.IsNullOrWhiteSpace(word))
                 return;
 
             word = word.Trim();
+
+            // No letters noted, allow lists hold other languages' words too (faggyú in en)
+            uint bit = LanguageBit(language);
+
+            if (word.IndexOf('*') >= 0)
+            {
+                AllowPiece(word, bit);
+                return;
+            }
 
             List<string> parts = null;
             int partStart = -1;
@@ -292,7 +373,7 @@ namespace PurrFanity
 
             if (parts.Count == 1)
             {
-                _allowed.Add(parts[0]);
+                _allowed.Add(parts[0], bit != 0 ? bit : AnyLanguage);
                 return;
             }
 
@@ -307,6 +388,29 @@ namespace PurrFanity
             _allowedPhraseCount++;
         }
 
+        // piece*, *piece or *piece*: a word with it in it is fine
+        private void AllowPiece(string pattern, uint bit)
+        {
+            var body = pattern.Trim('*').Trim();
+
+            if (body.Length == 0)
+                return;
+
+            for (var i = 0; i < body.Length; i++)
+            {
+                if (!char.IsLetterOrDigit(TextNormalizer.Fold(body[i])))
+                    return;
+            }
+
+            _allowedPieces.Add(new AllowedPiece
+            {
+                letters = FoldToString(body, 0, body.Length),
+                start = pattern[0] != '*',
+                end = pattern[pattern.Length - 1] != '*',
+                languages = bit != 0 ? bit : AnyLanguage
+            });
+        }
+
         public void Clear()
         {
             _anchored.children = null;
@@ -317,8 +421,11 @@ namespace PurrFanity
             _allowed.Clear();
             _allowedPhrases.Clear();
             _allowedPhraseCount = 0;
+            _allowedPieces.Clear();
             _common.Clear();
-            count = 0;
+            _languages.Clear();
+            _letters.Clear();
+            Count = 0;
         }
 
         private void Insert(Node node, ProfanityEntry entry)
@@ -368,20 +475,249 @@ namespace PurrFanity
         /// </summary>
         public void AddCommon(string word)
         {
+            AddCommon(word, null);
+        }
+
+        /// <summary>
+        /// Adds an everyday word. Two words are only read as one when neither is common: "fu ck" but not "pen is". Language specific.
+        /// </summary>
+        public void AddCommon(string word, string language)
+        {
             word = word?.Trim();
 
-            if (!string.IsNullOrEmpty(word))
-                _common.Add(FoldToString(word, 0, word.Length));
+            if (string.IsNullOrEmpty(word))
+                return;
+
+            uint bit = LanguageBit(language);
+            NoteLetters(word, bit);
+            _common.Add(FoldToString(word, 0, word.Length), bit != 0 ? bit : AnyLanguage);
         }
 
         internal bool IsCommon(string text, int start, int end)
         {
-            return _common.Contains(text, start, end);
+            return _common.Find(text, start, end) != 0;
         }
 
-        internal bool IsAllowed(string text, int start, int end)
+        // Languages the word is allowed in, 0 when it isn't
+        internal uint AllowedLanguages(string text, int start, int end)
         {
-            return _allowed.Count > 0 && _allowed.Contains(text, start, end);
+            uint languages = _allowed.Find(text, start, end);
+
+            for (var i = 0; i < _allowedPieces.Count; i++)
+            {
+                if (HasPiece(text, start, end, _allowedPieces[i]))
+                    languages |= _allowedPieces[i].languages;
+            }
+
+            return languages;
+        }
+
+        private static bool HasPiece(string text, int start, int end, AllowedPiece piece)
+        {
+            int length = piece.letters.Length;
+
+            if (length > end - start || (piece.start && piece.end && length != end - start))
+                return false;
+
+            int last = piece.start ? start : end - length;
+
+            for (var at = piece.end ? end - length : start; at <= last; at++)
+            {
+                if (FoldedAt(text, at, piece.letters))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool FoldedAt(string text, int at, string letters)
+        {
+            for (var i = 0; i < letters.Length; i++)
+            {
+                if (TextNormalizer.Fold(text[at + i]) != TextNormalizer.Fold(letters[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
+        // False when its the listed word with other accents: szár isn't szar, but szar and sz4r are
+        internal bool SameAccents(string text, int start, int end, ProfanityEntry entry)
+        {
+            if (entry.language == 0)
+                return true;
+
+            var word = entry.word;
+            int length = word.Length;
+
+            if (length > end - start || (entry.kind == MatchKind.Exact && length != end - start))
+                return true;
+
+            bool found = false;
+            int last = entry.anchoredStart ? start : end - length;
+
+            for (var at = entry.anchoredEnd ? end - length : start; at <= last; at++)
+            {
+                if (!FoldedAt(text, at, word))
+                    continue;
+
+                found = true;
+
+                if (AccentsAgree(text, at, word, entry.language))
+                    return true;
+            }
+
+            return !found;
+        }
+
+        // Unaccented letters could be anything, an accented one the language uses has to be the listed one
+        private bool AccentsAgree(string text, int at, string word, uint language)
+        {
+            for (var i = 0; i < word.Length; i++)
+            {
+                var character = text[at + i];
+
+                if (character < 128 || !char.IsLetter(character))
+                    continue;
+
+                character = char.ToLowerInvariant(character);
+
+                if (character != word[i] && _letters.TryGetValue(character, out var users) && (users & language) != 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        // Languages where the word is ordinary
+        internal uint WordLanguages(string text, int start, int end)
+        {
+            return _common.Find(text, start, end) | _allowed.Find(text, start, end);
+        }
+
+        // Languages that use every special letter in it, 0 when it has none of them
+        internal uint LetterLanguages(string text, int start, int end)
+        {
+            uint languages = AnyLanguage;
+            bool any = false;
+
+            for (var i = start; i < end; i++)
+            {
+                var character = text[i];
+
+                if (character < 128 || !char.IsLetter(character) || !_letters.TryGetValue(char.ToLowerInvariant(character), out var users))
+                    continue;
+
+                languages &= users;
+                any = true;
+            }
+
+            return any ? languages : 0;
+        }
+
+        // 0 when no words were added for it, en-US reads as en
+        internal uint FindLanguage(string code)
+        {
+            if (string.IsNullOrEmpty(code))
+                return 0;
+
+            for (var i = 0; i < _languages.Count; i++)
+            {
+                if (SameCode(_languages[i], code))
+                    return 1u << i;
+            }
+
+            return 0;
+        }
+
+        private uint LanguageBit(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return 0;
+
+            uint bit = FindLanguage(code);
+
+            if (bit != 0 || _languages.Count >= MaxLanguages)
+                return bit;
+
+            // Stored without the region, en-US is en
+            code = code.Trim();
+            int cut = code.IndexOfAny(_regionSeparators);
+            _languages.Add((cut > 0 ? code.Substring(0, cut) : code).ToLowerInvariant());
+            return 1u << (_languages.Count - 1);
+        }
+
+        private static readonly char[] _regionSeparators = { '-', '_', ' ' };
+
+        private static int BitIndex(uint bit)
+        {
+            int index = 0;
+
+            while (bit > 1)
+            {
+                bit >>= 1;
+                index++;
+            }
+
+            return index;
+        }
+
+        private static bool SameCode(string code, string other)
+        {
+            int start = 0;
+            int end = other.Length;
+
+            while (start < end && char.IsWhiteSpace(other[start]))
+                start++;
+
+            for (var i = start; i < end; i++)
+            {
+                if (other[i] == '-' || other[i] == '_' || char.IsWhiteSpace(other[i]))
+                {
+                    end = i;
+                    break;
+                }
+            }
+
+            if (end - start != code.Length)
+                return false;
+
+            for (var i = 0; i < code.Length; i++)
+            {
+                if (char.ToLowerInvariant(other[start + i]) != code[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        private void NoteLetters(string word, uint bit)
+        {
+            if (bit == 0)
+                return;
+
+            for (var i = 0; i < word.Length; i++)
+            {
+                var character = word[i];
+
+                if (character < 128 || !char.IsLetter(character))
+                    continue;
+
+                character = char.ToLowerInvariant(character);
+                _letters.TryGetValue(character, out var users);
+                _letters[character] = users | bit;
+            }
+        }
+
+        internal static bool HasSpecialLetter(string text, int start, int end)
+        {
+            for (var i = start; i < end; i++)
+            {
+                if (text[i] >= 128 && char.IsLetter(text[i]))
+                    return true;
+            }
+
+            return false;
         }
 
         private string FoldToString(string text, int start, int end)

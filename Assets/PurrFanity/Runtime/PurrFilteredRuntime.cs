@@ -13,7 +13,7 @@ namespace PurrFanity
             if (string.IsNullOrEmpty(text))
                 return true;
 
-            var filter = PurrFanity.GetProfile(profile).filter;
+            var filter = PurrFanity.GetProfile(profile).Filter;
             ProfanityAction? forced = action == ProfanityActionOverride.Profile ? (ProfanityAction?)null : (ProfanityAction)action;
 
             if (filter.TryFilter(text, out var filtered, forced))

@@ -1,0 +1,16 @@
+# "mongol" is left out on purpose, it's also the word for Mongolian.
+nyomorék
+nyomorékok
+nyomorékot
+*nyomorék*
+retardált
+retardáltak
+retardáltat
+*retardált*
+fogyi
+fogyik
+debil
+debilek
+debilis
+downos
+downosok

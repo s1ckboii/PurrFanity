@@ -14,26 +14,31 @@ namespace PurrFanity
         /// <summary>
         /// Used for categories without an action of their own.
         /// </summary>
-        public ProfanityAction action { get; set; } = ProfanityAction.Mask;
+        public ProfanityAction Action { get; set; } = ProfanityAction.Mask;
 
         /// <summary>
         /// Off lets all text through unchanged, for things like a streamer mode toggle.
         /// </summary>
-        public bool enabled { get; set; } = true;
-        public char maskCharacter { get; set; } = '*';
-        public MaskStyle maskStyle { get; set; } = MaskStyle.All;
+        public bool Enabled { get; set; } = true;
+        public char MaskCharacter { get; set; } = '*';
+        public MaskStyle MaskStyle { get; set; } = MaskStyle.All;
 
         /// <summary>
         /// The characters Symbols mask style cycles through.
         /// </summary>
-        public string maskSymbols { get; set; } = defaultMaskSymbols;
+        public string MaskSymbols { get; set; } = defaultMaskSymbols;
         public const string defaultMaskSymbols = "@#$%&!";
-        public string[] sillyWords { get; set; } = defaultSillyWords;
+        public string[] SillyWords { get; set; } = defaultSillyWords;
 
         /// <summary>
         /// Sees through tricks like sh1t, shiiit and s h i t.
         /// </summary>
-        public bool detectEvasion { get; set; } = true;
+        public bool DetectEvasion { get; set; } = true;
+
+        /// <summary>
+        /// Decides words fine in one loaded language but filtered in another, when nothing else does. Empty filters them.
+        /// </summary>
+        public string FallbackLanguage { get; set; }
 
         public void SetCategoryAction(ProfanityCategory category, ProfanityAction categoryAction)
         {
@@ -47,7 +52,7 @@ namespace PurrFanity
 
         public ProfanityAction GetAction(ProfanityCategory category)
         {
-            return _categoryActions.TryGetValue(category, out var categoryAction) ? categoryAction : action;
+            return _categoryActions.TryGetValue(category, out var categoryAction) ? categoryAction : Action;
         }
     }
 }

@@ -29,7 +29,7 @@ namespace PurrFanity
     }
 
     /// <summary>
-    /// The profanity filter. Works out of the box with the built-in English lists.
+    /// The profanity filter. Works out of the box with the built-in word lists.
     /// </summary>
     public static class PurrFanity
     {
@@ -120,30 +120,30 @@ namespace PurrFanity
         /// <summary>
         /// Returns the filtered text, or an empty string when the message is blocked.
         /// </summary>
-        public static string Filter(string text, ProfanityProfile profile = null)
+        public static string Filter(string text, ProfanityProfile profile = null, string language = null)
         {
-            return Resolve(profile).filter.Filter(text);
+            return Resolve(profile).Filter.Filter(text, language);
         }
 
         /// <summary>
         /// Returns false when the message is blocked.
         /// </summary>
-        public static bool TryFilter(string text, out string filtered, ProfanityProfile profile = null)
+        public static bool TryFilter(string text, out string filtered, ProfanityProfile profile = null, string language = null)
         {
-            return Resolve(profile).filter.TryFilter(text, out filtered);
+            return Resolve(profile).Filter.TryFilter(text, out filtered, null, language);
         }
 
         /// <summary>
         /// True when the text has anything the profile filters.
         /// </summary>
-        public static bool Contains(string text, ProfanityProfile profile = null)
+        public static bool Contains(string text, ProfanityProfile profile = null, string language = null)
         {
-            return Resolve(profile).filter.Contains(text);
+            return Resolve(profile).Filter.Contains(text, language);
         }
 
-        public static bool Contains(string text, out ProfanityCategory categories, ProfanityProfile profile = null)
+        public static bool Contains(string text, out ProfanityCategory categories, ProfanityProfile profile = null, string language = null)
         {
-            var result = Resolve(profile).filter.Check(text);
+            var result = Resolve(profile).Filter.Check(text, null, language);
             categories = result.categories;
             return result.hasProfanity;
         }
@@ -151,9 +151,9 @@ namespace PurrFanity
         /// <summary>
         /// The filtered text, whether it's blocked, and every match.
         /// </summary>
-        public static ProfanityResult Check(string text, ProfanityProfile profile = null)
+        public static ProfanityResult Check(string text, ProfanityProfile profile = null, string language = null)
         {
-            return Resolve(profile).filter.Check(text);
+            return Resolve(profile).Filter.Check(text, null, language);
         }
 
         private static ProfanityProfile Resolve(ProfanityProfile profile)

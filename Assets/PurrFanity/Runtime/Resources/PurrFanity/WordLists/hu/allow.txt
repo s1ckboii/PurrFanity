@@ -1,0 +1,61 @@
+# Caught by the Hungarian lists
+basszus
+basszust
+basszusok
+basszusgitár
+basszusgitáros
+baszk
+baszkok
+baszkul
+# Ordinary words with a filtered root in them, for when they're typed without accents
+*szarv*
+*szark*
+*szaru*
+*szaraz*
+*szarad*
+*szarit*
+*szarny*
+*szarmaz*
+*csaszar*
+*huszar*
+*kaszarny*
+*faszen*
+*faszek*
+*faszeg*
+*faszesz*
+*faszerkezet*
+*faszobor*
+*faszobr*
+*faszersz*
+*faszall*
+*faszilank*
+*pocsek*
+*pocsol*
+*baromfi*
+*baromi*
+*hulyeseg*
+*hulyesk*
+*rosszar*
+*hosszar*
+# English words the Hungarian lists would catch
+*buzz*
+*baromet*
+*zzar*
+*negger*
+*reneger*
+*algeciras*
+*spook*
+barroom
+barrooms
+geekier
+geekiest
+kafka
+pinna
+pinnas
+pinnae
+pina colada
+piña colada
+# Ordinary Hungarian words that read as English ones, settled by the words around them
+ász
+ászok
+ászt

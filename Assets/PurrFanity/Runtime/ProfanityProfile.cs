@@ -34,8 +34,13 @@ namespace PurrFanity
         [Tooltip("Off lets all text through unchanged, for things like a streamer mode toggle.")]
         [SerializeField] private bool _enabled = true;
 
-        [Tooltip("Built-in languages to load, like en. Anyone is welcome to contribute more word lists!")]
-        [SerializeField] private string[] _languages = { "en" };
+        [Tooltip("Built-in languages to load. Anyone is welcome to contribute more word lists!")]
+        [Language]
+        [SerializeField] private string[] _languages = { "en", "hu" };
+
+        [Tooltip("Decides words fine in one loaded language but filtered in another (asz, ass) when the message doesn't tell. None filters them.")]
+        [Language("None")]
+        [SerializeField] private string _fallbackLanguage = "en";
 
         [Tooltip("Kinds of words that get filtered.")]
         [SerializeField] private ProfanityCategory _categories = ProfanityCategory.All;
@@ -71,7 +76,7 @@ namespace PurrFanity
         /// <summary>
         /// Built on first use, and again after every change.
         /// </summary>
-        public ProfanityFilter filter
+        public ProfanityFilter Filter
         {
             get
             {
@@ -81,7 +86,7 @@ namespace PurrFanity
             }
         }
 
-        public ProfanityCategory categories
+        public ProfanityCategory Categories
         {
             get => _categories;
             set
@@ -91,7 +96,7 @@ namespace PurrFanity
             }
         }
 
-        public ProfanityAction action
+        public ProfanityAction Action
         {
             get => _action;
             set
@@ -104,7 +109,7 @@ namespace PurrFanity
         /// <summary>
         /// Off lets all text through unchanged. Cheap to flip, nothing gets rebuilt.
         /// </summary>
-        public bool enabled
+        public bool Enabled
         {
             get => _enabled;
             set
@@ -112,11 +117,11 @@ namespace PurrFanity
                 _enabled = value;
 
                 if (_filter != null)
-                    _filter.settings.enabled = value;
+                    _filter.settings.Enabled = value;
             }
         }
 
-        public MaskStyle maskStyle
+        public MaskStyle MaskStyle
         {
             get => _maskStyle;
             set
@@ -126,7 +131,7 @@ namespace PurrFanity
             }
         }
 
-        public string maskSymbols
+        public string MaskSymbols
         {
             get => _maskSymbols;
             set
@@ -136,7 +141,7 @@ namespace PurrFanity
             }
         }
 
-        public char maskCharacter
+        public char MaskCharacter
         {
             get => _maskCharacter;
             set
@@ -146,7 +151,7 @@ namespace PurrFanity
             }
         }
 
-        public bool detectEvasion
+        public bool DetectEvasion
         {
             get => _detectEvasion;
             set
@@ -156,7 +161,7 @@ namespace PurrFanity
             }
         }
 
-        public string[] languages
+        public string[] Languages
         {
             get => _languages;
             set
@@ -166,7 +171,19 @@ namespace PurrFanity
             }
         }
 
-        public string[] sillyWords
+        public string FallbackLanguage
+        {
+            get => _fallbackLanguage;
+            set
+            {
+                _fallbackLanguage = value;
+
+                if (_filter != null)
+                    _filter.settings.FallbackLanguage = value;
+            }
+        }
+
+        public string[] SillyWords
         {
             get => _sillyWords;
             set
@@ -176,11 +193,11 @@ namespace PurrFanity
             }
         }
 
-        public IReadOnlyList<ProfanityWordList> customLists => _customLists;
-        public IReadOnlyList<string> allowedWords => _allowedWords;
+        public IReadOnlyList<ProfanityWordList> CustomLists => _customLists;
+        public IReadOnlyList<string> AllowedWords => _allowedWords;
 
         /// <summary>
-        /// Filters every built-in English category with asterisks.
+        /// Filters every built-in language and category with asterisks.
         /// </summary>
         public static ProfanityProfile CreateDefault()
         {
@@ -269,13 +286,14 @@ namespace PurrFanity
 
             var settings = new ProfanityFilterSettings
             {
-                action = _action,
-                enabled = _enabled,
-                maskCharacter = _maskCharacter,
-                maskStyle = _maskStyle,
-                maskSymbols = string.IsNullOrEmpty(_maskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _maskSymbols,
-                detectEvasion = _detectEvasion,
-                sillyWords = _sillyWords
+                Action = _action,
+                Enabled = _enabled,
+                MaskCharacter = _maskCharacter,
+                MaskStyle = _maskStyle,
+                MaskSymbols = string.IsNullOrEmpty(_maskSymbols) ? ProfanityFilterSettings.defaultMaskSymbols : _maskSymbols,
+                DetectEvasion = _detectEvasion,
+                SillyWords = _sillyWords,
+                FallbackLanguage = _fallbackLanguage
             };
 
             for (var i = 0; i < _categoryActions.Length; i++)
@@ -300,7 +318,8 @@ namespace PurrFanity
             if (string.IsNullOrWhiteSpace(language))
                 return;
 
-            var folder = $"{PurrFanity.ResourcesFolder}/WordLists/{language.Trim()}/";
+            language = language.Trim();
+            var folder = $"{PurrFanity.ResourcesFolder}/WordLists/{language}/";
             bool foundAny = false;
 
             for (var i = 0; i < _builtInCategories.Length; i++)
@@ -313,18 +332,18 @@ namespace PurrFanity
                 foundAny = true;
 
                 if ((_categories & _builtInCategories[i]) != 0)
-                    WordListParser.Parse(asset.text, _builtInCategories[i], dictionary);
+                    WordListParser.Parse(asset.text, _builtInCategories[i], dictionary, language);
             }
 
             var allow = Resources.Load<TextAsset>(folder + AllowFile);
 
             if (allow)
-                WordListParser.ParseAllowed(allow.text, dictionary);
+                WordListParser.ParseAllowed(allow.text, dictionary, language);
 
             var common = Resources.Load<TextAsset>(folder + CommonFile);
 
             if (common)
-                WordListParser.ParseCommon(common.text, dictionary);
+                WordListParser.ParseCommon(common.text, dictionary, language);
 
             if (!foundAny)
             {

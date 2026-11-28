@@ -1,0 +1,79 @@
+hülye => buta
+hülyék => buták
+hülyét => butát
+*hülye*
+idióta => buta
+idióták => buták
+idiótát => butát
+*idióta*
+kretén => buta
+kretének => buták
+*kretén*
+barom => buta
+barmok => buták
+*barom*
+ostoba => buta
+ostobák => buták
+köcsög => bunkó
+köcsögök => bunkók
+*köcsög*
+csicska
+csicskák
+ribanc
+ribancok
+*ribanc*
+szajha
+szajhák
+lotyó
+lotyók
+cafka
+cafkák
+prosti
+prostik
+szemétláda => gazember
+szemétládák => gazemberek
+szarházi => gazember
+kurva anyád
+baszd meg az anyád
+nyald ki a seggem
+öld meg magad
+öld meg magadat
+akaszd fel magad
+halj meg
+dögölj meg
+rohadj meg
+# Ordinary words that are insults in a sentence
+te ló
+ló vagy
+te marha
+marha vagy
+te birka
+birka vagy
+te tehén
+tehén vagy
+te disznó
+disznó vagy
+te majom
+majom vagy
+te patkány
+patkány vagy
+te féreg
+féreg vagy
+te kutya
+kutya vagy
+te kígyó
+kígyó vagy
+te szamár
+szamár vagy
+te gyökér
+gyökér vagy
+te szemét
+szemét vagy
+te mocsok
+mocsok vagy
+te senki
+senki vagy
+te vesztes
+vesztes vagy
+te nyomorult
+nyomorult vagy

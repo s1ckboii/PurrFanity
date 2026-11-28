@@ -15,6 +15,14 @@ namespace PurrFanity
         /// </summary>
         public static int Parse(string text, ProfanityCategory category, ProfanityDictionary dictionary)
         {
+            return Parse(text, category, dictionary, null);
+        }
+
+        /// <summary>
+        /// Returns how many entries were added based on the specified language.
+        /// </summary>
+        public static int Parse(string text, ProfanityCategory category, ProfanityDictionary dictionary, string language)
+        {
             if (dictionary == null)
                 throw new ArgumentNullException(nameof(dictionary));
 
@@ -52,14 +60,14 @@ namespace PurrFanity
                     line = line.Substring(0, arrow);
                 }
 
-                if (dictionary.Add(line, category, replacements))
+                if (dictionary.Add(line, category, language, replacements))
                     added++;
             }
 
             return added;
         }
 
-        public static int ParseCommon(string text, ProfanityDictionary dictionary)
+        public static int ParseCommon(string text, ProfanityDictionary dictionary, string language = null)
         {
             if (dictionary == null)
                 throw new ArgumentNullException(nameof(dictionary));
@@ -77,14 +85,14 @@ namespace PurrFanity
                 if (line.Length == 0 || line[0] == '#')
                     continue;
 
-                dictionary.AddCommon(line);
+                dictionary.AddCommon(line, language);
                 added++;
             }
 
             return added;
         }
 
-        public static int ParseAllowed(string text, ProfanityDictionary dictionary)
+        public static int ParseAllowed(string text, ProfanityDictionary dictionary, string language = null)
         {
             if (dictionary == null)
                 throw new ArgumentNullException(nameof(dictionary));
@@ -102,7 +110,7 @@ namespace PurrFanity
                 if (line.Length == 0 || line[0] == '#')
                     continue;
 
-                dictionary.Allow(line);
+                dictionary.Allow(line, language);
                 added++;
             }
 

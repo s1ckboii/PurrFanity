@@ -1,0 +1,56 @@
+kurva => fránya
+kurvára => nagyon
+kurvaélet => csudába
+kva => fránya
+kvára => nagyon
+*kurva* => fránya
+kibaszott => átkozott
+kibaszottul => nagyon
+bazmeg => basszus
+bmeg => basszus
+bzmeg => basszus
+bazdmeg => basszus
+baszki => basszus
+bassza meg => a csudába
+baszd meg => a csudába
+*basz*
+fasz
+faszom => fenét
+faszt
+faszok
+faszság => hülyeség
+faszságot => hülyeséget
+faszfej => tökfej
+faszkalap => tökfej
+fasza => szuper
+faszos
+*fasz*
+*geci*
+*picsa*
+*segg*
+szar => vacak
+szart => vacakot
+szarok
+szaros => vacak
+szarság => vacakság
+szarságot => vacakságot
+szarságok => vacakságok
+szarul => rosszul
+szarba
+szarban
+szarra
+szarom
+leszarom => nem érdekel
+leszarta
+leszarják
+beszartam => megijedtem
+beszart => megijedt
+beszari => gyáva
+fos => vacak
+fosos => vacak
+fost
+fostam
+rohadék => gazember
+rohadékok => gazemberek
+# Any word with these in it: lószar, kutyafasza, seggarc
+*szar*
