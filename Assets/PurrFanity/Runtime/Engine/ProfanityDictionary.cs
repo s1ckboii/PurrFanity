@@ -861,7 +861,8 @@ namespace PurrFanity
         {
             var first = tokens[tokenIndex];
 
-            if (!_allowedPhrases.TryGetValue(TextNormalizer.Fold(text[first.coreStart]), out var list))
+            // Only symbols (!!!), nothing to look up
+            if (first.coreEnd <= first.coreStart || !_allowedPhrases.TryGetValue(TextNormalizer.Fold(text[first.coreStart]), out var list))
                 return 0;
 
             int longest = 0;
